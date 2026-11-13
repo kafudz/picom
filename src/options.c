@@ -2,6 +2,7 @@
 // Copyright (c) Yuxuan Shui <yshuiv7@gmail.com>
 
 #include <getopt.h>
+#include <limits.h>
 #include <locale.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -824,6 +825,14 @@ static bool sanitize_options(struct options *opt) {
 		log_warn("--max-brightness requires --no-use-damage. "
 		         "Falling back to 1.0.");
 		opt->max_brightness = 1.0;
+	}
+
+	// The config file parser does not enforce the range the command line parser
+	// does. A negative or overflowing blur size would otherwise lead to an
+	// invalid kernel allocation and out-of-bounds access.
+	if (opt->blur_radius < 0 || opt->blur_radius > (INT_MAX - 1) / 2) {
+		log_error("Invalid blur size %d.", opt->blur_radius);
+		return false;
 	}
 
 	if (opt->write_pid_path && *opt->write_pid_path != '/') {

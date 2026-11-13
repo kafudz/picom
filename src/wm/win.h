@@ -381,7 +381,7 @@ win_maybe_options_or(struct window_maybe_options maybe, struct window_options de
 	return ret;
 }
 
-static inline struct window_options __attribute__((always_inline, const))
+static inline struct window_options __attribute__((always_inline, pure))
 win_options(const struct win *w) {
 	return win_maybe_options_or(
 	    win_maybe_options_fold(w->options_override, w->options), *w->options_default);

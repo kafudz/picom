@@ -10,6 +10,7 @@
 
 #include <libconfig.h>
 #include <libgen.h>
+#include <test.h>
 
 #include "backend/backend.h"
 #include "c2.h"
@@ -684,13 +685,22 @@ parse_shader_specification(config_setting_t *setting, const char *include_dir) {
 	auto len = strlen(full_path) + 1;
 	for (unsigned i = 0; i < n; i++) {
 		auto elem = config_setting_get_elem(defines, i);
+		auto name = config_setting_name(elem);
 		auto value = config_setting_get_string(elem);
+		if (name == NULL) {
+			log_error("shader define at line %d has no name; \"defines\" "
+			          "must be a group.",
+			          config_setting_source_line(elem));
+			free(full_path);
+			return NULL;
+		}
 		if (value == NULL) {
 			log_error("shader define at line %d is not a string.",
 			          config_setting_source_line(elem));
+			free(full_path);
 			return NULL;
 		}
-		len += strlen(config_setting_name(elem)) + 1;
+		len += strlen(name) + 1;
 		len += strlen(value) + 1;
 	}
 
@@ -713,6 +723,19 @@ parse_shader_specification(config_setting_t *setting, const char *include_dir) {
 	}
 
 	return ret;
+}
+
+TEST_CASE(parse_shader_specification_rejects_unnamed_defines) {
+	config_t cfg;
+	config_init(&cfg);
+	config_set_auto_convert(&cfg, true);
+	TEST_TRUE(config_read_string(
+	    &cfg, "shader = { path = \"/dev/null\"; defines = (\"FOO=bar\"); };"));
+	config_setting_t *setting =
+	    config_setting_lookup(config_root_setting(&cfg), "shader");
+	TEST_TRUE(setting != NULL);
+	TEST_TRUE(parse_shader_specification(setting, NULL) == NULL);
+	config_destroy(&cfg);
 }
 
 static bool
@@ -857,7 +880,7 @@ bool parse_config_libconfig(options_t *opt, const char *config_file) { /*NOLINT(
 #endif
 	{
 		char *abspath = realpath(path, NULL);
-		char *parent = dirname(abspath);
+		char *parent = abspath ? dirname(abspath) : NULL;
 
 		if (parent) {
 			config_set_include_dir(&cfg, parent);

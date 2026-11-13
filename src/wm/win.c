@@ -1010,7 +1010,6 @@ void win_on_factor_change(session_t *ps, struct win *w) {
 		win_determine_blur_background(ps, w);
 		win_determine_rounded_corners(ps, w);
 		win_determine_fg_shader(ps, w);
-		win_update_opacity_rule(ps, w);
 		win_update_dim(ps, w, focused);
 		w->mode = win_calc_mode(w);
 		log_debug("Window mode changed to %d", w->mode);

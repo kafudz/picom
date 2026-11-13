@@ -4,6 +4,9 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdlib.h>
+
+#include <test.h>
 
 #include "compiler.h"
 #include "utils/misc.h"
@@ -133,7 +136,7 @@ struct curve parse_steps(const char *input_str, const char **out_end, char **err
 	str = skip_space(str);
 	char *end;
 	auto steps = strtol(str, &end, 10);
-	if (end == str || steps > INT_MAX) {
+	if (end == str || steps <= 0 || steps > INT_MAX) {
 		casprintf(err, "Invalid step count at \"%s\".", str);
 		return CURVE_INVALID_INIT;
 	}
@@ -159,6 +162,28 @@ struct curve parse_steps(const char *input_str, const char **out_end, char **err
 	}
 	*out_end = str + 1;
 	return curve_new_step((int)steps, jump_start, jump_end);
+}
+
+TEST_CASE(parse_steps_rejects_non_positive_count) {
+	const char *end = NULL;
+	char *err = NULL;
+
+	struct curve curve = parse_steps("(0, jump-start)", &end, &err);
+	TEST_EQUAL(curve.type, CURVE_INVALID);
+	TEST_TRUE(err != NULL);
+	free(err);
+
+	err = NULL;
+	curve = parse_steps("(-1, jump-start)", &end, &err);
+	TEST_EQUAL(curve.type, CURVE_INVALID);
+	TEST_TRUE(err != NULL);
+	free(err);
+
+	err = NULL;
+	curve = parse_steps("(3, jump-start)", &end, &err);
+	TEST_EQUAL(curve.type, CURVE_STEP);
+	TEST_EQUAL(curve.step.steps, 3);
+	TEST_TRUE(err == NULL);
 }
 
 struct curve parse_cubic_bezier(const char *input_str, const char **out_end, char **err) {

@@ -143,7 +143,12 @@ const char *trim_both(const char *src, size_t *length) {
 	while (isspace(src[i])) {
 		i++;
 	}
-	size_t j = strlen(src) - 1;
+	size_t len = strlen(src);
+	if (len == 0) {
+		*length = 0;
+		return src;
+	}
+	size_t j = len - 1;
 	while (j > i && isspace(src[j])) {
 		j--;
 	}
@@ -164,6 +169,10 @@ TEST_CASE(trim_both) {
 	str = trim_both("  asdf asdf   ", &length);
 	TEST_EQUAL(length, 9);
 	TEST_STRNEQUAL(str, "asdf asdf", length);
+
+	str = trim_both("", &length);
+	TEST_EQUAL(length, 0);
+	TEST_EQUAL(*str, '\0');
 }
 
 static int vasnprintf(char **strp, size_t *capacity, const char *fmt, va_list args) {

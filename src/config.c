@@ -216,12 +216,20 @@ static conv *parse_blur_kern(const char *src, const char **endptr) {
 		goto err1;
 	}
 	src = pc;
+	if (safe_isnan(val) || val > (double)INT_MAX || val < (double)INT_MIN) {
+		log_error("Blur kernel width is out of range.");
+		goto err1;
+	}
 	width = (int)val;
 	pc = parse_readnum(src, &val);
 	if (src == pc) {
 		goto err1;
 	}
 	src = pc;
+	if (safe_isnan(val) || val > (double)INT_MAX || val < (double)INT_MIN) {
+		log_error("Blur kernel height is out of range.");
+		goto err1;
+	}
 	height = (int)val;
 
 	// Validate matrix width and height
@@ -231,6 +239,10 @@ static conv *parse_blur_kern(const char *src, const char **endptr) {
 	}
 	if (!(width % 2 && height % 2)) {
 		log_error("Blur kernel width/height must be odd.");
+		goto err1;
+	}
+	if (width > INT_MAX / height) {
+		log_error("Blur kernel is too large.");
 		goto err1;
 	}
 	if (width > 16 || height > 16) {
@@ -401,6 +413,33 @@ struct conv **parse_blur_kern_lst(const char *src, int *count) {
 	*count = i;
 
 	return ret;
+}
+
+TEST_CASE(parse_blur_kern_rejects_out_of_range_dimensions) {
+	int count = 0;
+	struct conv **kerns = parse_blur_kern_lst("3x3box", &count);
+	TEST_TRUE(kerns != NULL);
+	TEST_EQUAL(count, 1);
+	for (int i = 0; i < count; i++) {
+		free(kerns[i]);
+	}
+	free(kerns);
+
+	// A dimension that does not fit in an int must be rejected instead of
+	// being truncated by a double-to-int conversion.
+	kerns = parse_blur_kern_lst("999999999999999999999,3,1,1,1,1,1,1,1,1,", &count);
+	TEST_TRUE(kerns == NULL);
+
+	// A width * height product that would overflow int must be rejected.
+	kerns = parse_blur_kern_lst("2147483647,2147483647,", &count);
+	TEST_TRUE(kerns == NULL);
+}
+
+TEST_CASE(hex_to_rgb_does_not_read_past_empty_string) {
+	struct color color = hex_to_rgb("");
+	TEST_EQUAL(color.red, 0);
+	TEST_EQUAL(color.green, 0);
+	TEST_EQUAL(color.blue, 0);
 }
 
 void *parse_numeric_prefix(const char *src, const char **end, void *user_data) {

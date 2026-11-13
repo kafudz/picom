@@ -295,8 +295,9 @@ static inline double attr_const attr_unused normalize_d(double d) {
  */
 static inline struct color hex_to_rgb(const char *hex) {
 	struct color rgb;
-	// Ignore the # in front of the string
-	const char *sane_hex = hex + 1;
+	// Ignore the # in front of the string. Don't advance past the terminator for
+	// an empty string.
+	const char *sane_hex = *hex ? hex + 1 : hex;
 	int hex_color = (int)strtol(sane_hex, NULL, 16);
 	rgb.red = (float)(hex_color >> 16) / 256;
 	rgb.green = (float)((hex_color & 0x00ff00) >> 8) / 256;
